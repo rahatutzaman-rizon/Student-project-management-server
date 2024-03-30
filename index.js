@@ -20,8 +20,8 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    const taskCollection = client.db("jobTask").collection("tasks");
-    const groupCollection= client.db("group").collection("member");
+  
+    
     const teacherCollection= client.db("teacher").collection("one");
     const teacherCollection2= client.db("teacher").collection("two");
 
@@ -43,8 +43,7 @@ async function run() {
       const mover=await teacherCollection.findOne(query);
       
       res.send(mover);
-     
-    })
+     })
     
     app.get('/team2/:id',async(req,res)=>{
       const id2=req.params.id;
@@ -58,131 +57,11 @@ async function run() {
 
 
 
-//put method 
-app.put("/taskUpdate/:id",async(req,res)=>{
-
-  const tasks=req.body;
-  const id = req.params.id;
-
-  console.log(tasks);
-  const result=await teacherCollection.findOneAndUpdate(
-    
-      
-{ team: id },
-{ $push: { tasks: tasks} },
-    
-  );
-  res.send(result)
-
-})
-
-
-
-    // app.get('/1/:id',async(req,res)=>{
-    //   const id=req.params.id;
-    //   const query={_id:new ObjectId(id)};
-    //   const mover=await teacherCollection.findOne(query);
-    //   res.send(mover)
-    // })
-    
-
-    // app.post('/1/:id',async(req,res)=>{
-  
-    
-    //   const member=req.body;
-   
-      
-    //   const result=await teacherCollection.insertOne(member);
-    
-    //   res.send(result);
-
-    // })
-    
-   
-    
-
-
-    app.get("/getstudent",async(req,res)=>{
-      const result = await groupCollection.find({group:"2"}).toArray();
-      res.send(result);
-    })
-    
-    app.get("/member", async (req, res) => {
-        const result = await groupCollection.find().toArray();
-        res.send(result);
-      })
-
-
-       app.post('/member',async(req,res)=>{
-
-  const member=req.body;
-
-  //
-  const result=await groupCollection.insertOne(member);
-
-  res.send(result);
- })
 
 
 
 
 
-      app.get("/member/:groupId", async (req, res) => {
-        const groupId = req.params.groupId;
-        
-        const query = { group: groupId };
-        
-        const members = await groupCollection.find(query).toArray();
-        
-        res.send(members);
-      });
-
-
-
-      //move
-app.get('/move/:id',async(req,res)=>{
-  const id=req.params.id;
-  const query={_id:new ObjectId(id)};
-  const mover=await groupCollection.findOne(query);
-  res.send(mover)
-})
-
-
-
-    app.delete("/taskDelete/:id", async (req, res) => {
-      const id = req?.params?.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await taskCollection.deleteOne(query);
-      res.send(result);
-    })
-
-    app.put("/updateTask/:id", async (req, res) => {
-      const updatedData = req?.body;
-      const id = req?.params?.id;
-      const filter = {_id : new ObjectId(id)};
-      const options = { upsert: true };
-      const updateDoc = {
-        $set : {
-          ...updatedData
-        }
-      }
-      const result = await taskCollection.updateOne(filter, updateDoc, options);
-      res.send(result);
-    })
-
-    app.put("/statusChange/:id", async (req, res) => {
-      const updatedData = req?.body;
-      const id = req?.params?.id;
-      const filter = {_id : new ObjectId(id)};
-      const options = { upsert: true };
-      const updateDoc = {
-        $set : {
-          ...updatedData
-        }
-      }
-      const result = await taskCollection.updateOne(filter, updateDoc, options);
-      res.send(result);
-    })
 
   } finally {
   }
