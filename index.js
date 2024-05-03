@@ -1,11 +1,25 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-require('dotenv').config()
+require('dotenv').config();
+const nodemailer = require('nodemailer');
 const port = process.env.PORT | 5000;
 
 app.use(express.json());
 app.use(cors());
+
+//nodemailer
+const transporter = nodemailer.createTransport({
+ 
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // Use `true` for port 465, `false` for all other ports
+  auth: {
+    user: "rizonrahat199@gmail.com",
+    pass: "yufj bcis enjn camg",
+  },
+});
+
 
 //gpeYJ3jTyAALnHAr
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -44,18 +58,48 @@ async function run() {
       res.send(move1);
      })
     
-    app.put("/add-task/team1/:id", async(req,res)=>{
+   //add and send email 
+   app.put("/add-task/team1/:id", async (req, res) => {
     const task = req.body;
     const id = req.params.id;
     const result = await teacherCollection.updateOne(
-     {_id: new ObjectId(id)},
-    {$push: {tasks: task}}
-     )
+      { _id: new ObjectId(id) },
+      { $push: { tasks: task } }
+    );
+
+    // Send email with task data
+    const project = await teacherCollection.findOne({ _id: new ObjectId(id) });
+    const emailRecipients = project.members.map((member) => member.mail);
+
+    const mailOptions = {
+      from: "rizonrahat199@gmail.com", // Replace with your Gmail email
+      to: "redwantamim525@gmail.com",
+      subject: `New Task Added: ${task.title}`,
+      text: `
+        A new task has been added:
+       email: ${emailRecipients}
+        Title: ${task.title}
+        Description: ${task.description}
+        Start Date: ${task.start_date}
+        Deadline: ${task.deadline}
+        Status: ${task.status}
+      `,
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log('Email sent: ' + info.response);
+      }
+    });
+
     res.send(result);
-     })
+  });
+
 
    //delete
-       app.delete("/delete-task/:id/:taskNumber", async (req, res) => {
+       app.delete("/delete-task/team1/:id/:taskNumber", async (req, res) => {
         try {
           const { id, taskNumber } = req.params;
       
@@ -121,7 +165,7 @@ async function run() {
        })
   
      //delete
-         app.delete("/delete-task/:id/:taskNumber", async (req, res) => {
+         app.delete("/delete-task/team2/:id/:taskNumber", async (req, res) => {
           try {
             const { id, taskNumber } = req.params;
         
@@ -190,7 +234,7 @@ async function run() {
        })
   
      //delete
-         app.delete("/delete-task/:id/:taskNumber", async (req, res) => {
+         app.delete("/delete-task/team3/:id/:taskNumber", async (req, res) => {
           try {
             const { id, taskNumber } = req.params;
         
@@ -257,7 +301,7 @@ async function run() {
        })
   
      //delete
-         app.delete("/delete-task/:id/:taskNumber", async (req, res) => {
+         app.delete("/delete-task/team4/:id/:taskNumber", async (req, res) => {
           try {
             const { id, taskNumber } = req.params;
         
@@ -325,7 +369,7 @@ async function run() {
        })
   
      //delete
-         app.delete("/delete-task/:id/:taskNumber", async (req, res) => {
+         app.delete("/delete-task/team5/:id/:taskNumber", async (req, res) => {
           try {
             const { id, taskNumber } = req.params;
         
@@ -393,7 +437,7 @@ async function run() {
        })
   
      //delete
-         app.delete("/delete-task/:id/:taskNumber", async (req, res) => {
+         app.delete("/delete-task/team6/:id/:taskNumber", async (req, res) => {
           try {
             const { id, taskNumber } = req.params;
         
