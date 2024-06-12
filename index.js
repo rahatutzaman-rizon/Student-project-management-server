@@ -1,6 +1,11 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
+
+const multer = require('multer');
+const xlsx = require('xlsx');
+
+
 require('dotenv').config();
 const nodemailer = require('nodemailer');
 const port = process.env.PORT | 5000;
@@ -32,6 +37,11 @@ const client = new MongoClient(uri, {
   }
 });
 
+
+//file 
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
 async function run() {
   try {
   
@@ -44,6 +54,51 @@ async function run() {
     const teacherCollection6= client.db("teacher").collection("six");
     const teacherCollection7= client.db("teacher").collection("seven");
    
+//excel file 
+app.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+const sheetName = workbook.SheetNames[0];
+const worksheet = workbook.Sheets[sheetName];
+const data = xlsx.utils.sheet_to_json(worksheet);
+
+// Connect to MongoDB
+const client = await MongoClient.connect(mongoUrl);
+const db = client.db('mydatabase');
+const collection = db.collection('exceldata');
+
+// Insert the data into MongoDB
+await collection.insertMany(data);
+
+res.status(200).json({ message: 'Excel data uploaded successfully' });
+client.close();
+} catch (err) {
+console.error(err);
+res.status(500).json({ message: 'Error uploading Excel data' });
+}
+});
+
+// Endpoint for fetching the data
+app.get('/data', async (req, res) => {
+try {
+// Connect to MongoDB
+
+const db = client.db('mydatabase');
+const collection = db.collection('exceldata');
+
+// Fetch the data from MongoDB
+const data = await collection.find().toArray();
+
+res.status(200).json(data);
+client.close();
+} catch (err) {
+console.error(err);
+res.status(500).json({ message: 'Error fetching data' });
+}
+});
+
+
+
     //one
       app.get("/1", async (req, res) => {
       const result = await teacherCollection.find().toArray();
@@ -57,47 +112,119 @@ async function run() {
       
       res.send(move1);
      })
+    //email and add task
+    app.put("/add-task/team1/:id", async (req, res) => {
+      const task = req.body;
+      const id = req.params.id;
+      const result = await teacherCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $push: { tasks: task } }
+      );
     
-   //add and send email 
-   app.put("/add-task/team1/:id", async (req, res) => {
-    const task = req.body;
-    const id = req.params.id;
-    const result = await teacherCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $push: { tasks: task } }
-    );
-
-    // Send email with task data
-    const project = await teacherCollection.findOne({ _id: new ObjectId(id) });
-    const emailRecipients = project.members.map((member) => member.mail);
-
-    const mailOptions = {
-      from: "rizonrahat199@gmail.com", // Replace with your Gmail email
-      to: "redwantamim525@gmail.com",
-      subject: `New Task Added: ${task.title}`,
-      text: `
-        A new task has been added:
-       email: ${emailRecipients}
-        Title: ${task.title}
-        Description: ${task.description}
-        Start Date: ${task.start_date}
-        Deadline: ${task.deadline}
-        Status: ${task.status}
-      `,
-    };
-
-    transporter.sendMail(mailOptions, (error, info) => {
-      if (error) {
-        console.log(error);
-      } else {
-        console.log('Email sent: ' + info.response);
-      }
+      // Send email with task data
+      const project = await teacherCollection.findOne({ _id: new ObjectId(id) });
+      const emailRecipients = project.members.map((member) => member.mail);
+    
+      const emailBody = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.5;
+                background: linear-gradient(135deg, #29c4a9, #006bce);
+                color: #fff;
+                padding: 20px;
+              }
+              .container {
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #fff;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                background: linear-gradient(135deg, #ff5f6d, #ffc371);
+                padding: 20px;
+                text-align: center;
+              }
+              h1 {
+                margin: 0;
+                color: #fff;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+              }
+              .info {
+                background-color: #f1f1f1;
+                padding: 20px;
+              }
+              .info p {
+                margin: 5px 0;
+                color: #333;
+              }
+              .task-details {
+                padding: 20px;
+              }
+              .task-details h2 {
+                color: #e67e22;
+                margin-top: 0;
+              }
+              .task-details p {
+                margin: 5px 0;
+                color: #333;
+                font-weight: bold;
+              }
+              .task-details p span {
+                font-weight: bold;
+                color: #333;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>New Task Added</h1>
+              </div>
+              <div class="info">
+                <p><strong>Teacher:</strong> ${project.teacher}</p>
+                <p><strong>Designation:</strong> ${project.designation}</p>
+                <p><strong>Project Name:</strong> ${project.name}</p>
+                <p><strong>Group No:</strong> ${project.team}</p>
+              </div>
+              <div class="task-details">
+                <h2>Task Details</h2>
+                <p><strong>Title:</strong> <span>${task.title}</span></p>
+                <p><strong>Description:</strong> <span>${task.description}</span></p>
+                <p><strong>Start Date:</strong> <span>${task.start_date}</span></p>
+                <p><strong>Deadline:</strong> <span>${new Date(task.deadline).toLocaleString()}</span></p>
+                <p><strong>Status:</strong> <span>${task.status}</span></p>
+                <p>This task is assigned by <span> ${project.teacher}.</span>  Please complete it before the deadline.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+    
+      const mailOptions = {
+        from: "rizonrahat199@gmail.com", // Replace with your Gmail email
+        to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+        subject: `New Task Added: ${task.title}`,
+        html: emailBody, // Use the HTML template for the email body
+      };
+    
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log('Email sent: ' + info.response);
+        }
+      });
+    
+      res.send(result);
     });
 
-    res.send(result);
-  });
-
-
+    
    //delete
        app.delete("/delete-task/team1/:id/:taskNumber", async (req, res) => {
         try {
@@ -154,16 +281,118 @@ async function run() {
         res.send(move2);
        })
       
-      app.put("/add-task/team2/:id", async(req,res)=>{
+     //email and add task
+     app.put("/add-task/team2/:id", async (req, res) => {
       const task = req.body;
       const id = req.params.id;
       const result = await teacherCollection2.updateOne(
-       {_id: new ObjectId(id)},
-      {$push: {tasks: task}}
-       )
+        { _id: new ObjectId(id) },
+        { $push: { tasks: task } }
+      );
+    
+      // Send email with task data
+      const project = await teacherCollection2.findOne({ _id: new ObjectId(id) });
+      const emailRecipients = project.members.map((member) => member.mail);
+    
+      const emailBody = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.5;
+                background: linear-gradient(135deg, #29c4a9, #006bce);
+                color: #fff;
+                padding: 20px;
+              }
+              .container {
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #fff;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                background: linear-gradient(135deg, #ff5f6d, #ffc371);
+                padding: 20px;
+                text-align: center;
+              }
+              h1 {
+                margin: 0;
+                color: #fff;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+              }
+              .info {
+                background-color: #f1f1f1;
+                padding: 20px;
+              }
+              .info p {
+                margin: 5px 0;
+                color: #333;
+              }
+              .task-details {
+                padding: 20px;
+              }
+              .task-details h2 {
+                color: #e67e22;
+                margin-top: 0;
+              }
+              .task-details p {
+                margin: 5px 0;
+                color: #333;
+                font-weight: bold;
+              }
+              .task-details p span {
+                font-weight: bold;
+                color: #333;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>New Task Added</h1>
+              </div>
+              <div class="info">
+                <p><strong>Teacher:</strong> ${project.teacher}</p>
+                <p><strong>Designation:</strong> ${project.designation}</p>
+                <p><strong>Project Name:</strong> ${project.name}</p>
+                <p><strong>Group No:</strong> ${project.team}</p>
+              </div>
+              <div class="task-details">
+                <h2>Task Details</h2>
+                <p><strong>Title:</strong> <span>${task.title}</span></p>
+                <p><strong>Description:</strong> <span>${task.description}</span></p>
+                <p><strong>Start Date:</strong> <span>${task.start_date}</span></p>
+                <p><strong>Deadline:</strong> <span>${new Date(task.deadline).toLocaleString()}</span></p>
+                <p><strong>Status:</strong> <span>${task.status}</span></p>
+                <p>This task is assigned by <span> ${project.teacher}.</span>  Please complete it before the deadline.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+    
+      const mailOptions = {
+        from: "rizonrahat199@gmail.com", // Replace with your Gmail email
+        to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+        subject: `New Task Added: ${task.title}`,
+        html: emailBody, // Use the HTML template for the email body
+      };
+    
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log('Email sent: ' + info.response);
+        }
+      });
+    
       res.send(result);
-       })
-  
+    });
+
      //delete
          app.delete("/delete-task/team2/:id/:taskNumber", async (req, res) => {
           try {
@@ -222,17 +451,120 @@ async function run() {
         
         res.send(move3);
        })
-      
-      app.put("/add-task/team3/:id", async(req,res)=>{
-      const task = req.body;
-      const id = req.params.id;
-      const result = await teacherCollection3.updateOne(
-       {_id: new ObjectId(id)},
-      {$push: {tasks: task}}
-       )
-      res.send(result);
-       })
-  
+ 
+ //email and add task
+ app.put("/add-task/team3/:id", async (req, res) => {
+  const task = req.body;
+  const id = req.params.id;
+  const result = await teacherCollection3.updateOne(
+    { _id: new ObjectId(id) },
+    { $push: { tasks: task } }
+  );
+
+  // Send email with task data
+  const project = await teacherCollection3.findOne({ _id: new ObjectId(id) });
+  const emailRecipients = project.members.map((member) => member.mail);
+
+  const emailBody = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.5;
+            background: linear-gradient(135deg, #29c4a9, #006bce);
+            color: #fff;
+            padding: 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #ff5f6d, #ffc371);
+            padding: 20px;
+            text-align: center;
+          }
+          h1 {
+            margin: 0;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+          }
+          .info {
+            background-color: #f1f1f1;
+            padding: 20px;
+          }
+          .info p {
+            margin: 5px 0;
+            color: #333;
+          }
+          .task-details {
+            padding: 20px;
+          }
+          .task-details h2 {
+            color: #e67e22;
+            margin-top: 0;
+          }
+          .task-details p {
+            margin: 5px 0;
+            color: #333;
+            font-weight: bold;
+          }
+          .task-details p span {
+            font-weight: bold;
+            color: #333;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>New Task Added</h1>
+          </div>
+          <div class="info">
+            <p><strong>Teacher:</strong> ${project.teacher}</p>
+            <p><strong>Designation:</strong> ${project.designation}</p>
+            <p><strong>Project Name:</strong> ${project.name}</p>
+            <p><strong>Group No:</strong> ${project.team}</p>
+          </div>
+          <div class="task-details">
+            <h2>Task Details</h2>
+            <p><strong>Title:</strong> <span>${task.title}</span></p>
+            <p><strong>Description:</strong> <span>${task.description}</span></p>
+            <p><strong>Start Date:</strong> <span>${task.start_date}</span></p>
+            <p><strong>Deadline:</strong> <span>${new Date(task.deadline).toLocaleString()}</span></p>
+            <p><strong>Status:</strong> <span>${task.status}</span></p>
+            <p>This task is assigned by <span> ${project.teacher}.</span>  Please complete it before the deadline.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const mailOptions = {
+    from: "rizonrahat199@gmail.com", // Replace with your Gmail email
+    to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+    subject: `New Task Added: ${task.title}`,
+    html: emailBody, // Use the HTML template for the email body
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log('Email sent: ' + info.response);
+    }
+  });
+
+  res.send(result);
+});
+
+
      //delete
          app.delete("/delete-task/team3/:id/:taskNumber", async (req, res) => {
           try {
@@ -290,16 +622,120 @@ async function run() {
         res.send(move4);
        })
       
-      app.put("/add-task/team4/:id", async(req,res)=>{
-      const task = req.body;
-      const id = req.params.id;
-      const result = await teacherCollection4.updateOne(
-       {_id: new ObjectId(id)},
-      {$push: {tasks: task}}
-       )
-      res.send(result);
-       })
-  
+ //email and add task
+ app.put("/add-task/team4/:id", async (req, res) => {
+  const task = req.body;
+  const id = req.params.id;
+  const result = await teacherCollection4.updateOne(
+    { _id: new ObjectId(id) },
+    { $push: { tasks: task } }
+  );
+
+  // Send email with task data
+  const project = await teacherCollection4.findOne({ _id: new ObjectId(id) });
+  const emailRecipients = project.members.map((member) => member.mail);
+
+  const emailBody = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.5;
+            background: linear-gradient(135deg, #29c4a9, #006bce);
+            color: #fff;
+            padding: 20px;
+          }
+          .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+          }
+          .header {
+            background: linear-gradient(135deg, #ff5f6d, #ffc371);
+            padding: 20px;
+            text-align: center;
+          }
+          h1 {
+            margin: 0;
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+          }
+          .info {
+            background-color: #f1f1f1;
+            padding: 20px;
+          }
+          .info p {
+            margin: 5px 0;
+            color: #333;
+          }
+          .task-details {
+            padding: 20px;
+          }
+          .task-details h2 {
+            color: #e67e22;
+            margin-top: 0;
+          }
+          .task-details p {
+            margin: 5px 0;
+            color: #333;
+            font-weight: bold;
+          }
+          .task-details p span {
+            font-weight: bold;
+            color: #333;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>New Task Added</h1>
+          </div>
+          <div class="info">
+            <p><strong>Teacher:</strong> ${project.teacher}</p>
+            <p><strong>Designation:</strong> ${project.designation}</p>
+            <p><strong>Project Name:</strong> ${project.name}</p>
+            <p><strong>Group No:</strong> ${project.team}</p>
+          </div>
+          <div class="task-details">
+            <h2>Task Details</h2>
+            <p><strong>Title:</strong> <span>${task.title}</span></p>
+            <p><strong>Description:</strong> <span>${task.description}</span></p>
+            <p><strong>Start Date:</strong> <span>${task.start_date}</span></p>
+            <p><strong>Deadline:</strong> <span>${new Date(task.deadline).toLocaleString()}</span></p>
+            <p><strong>Status:</strong> <span>${task.status}</span></p>
+            <p>This task is assigned by <span> ${project.teacher}.</span>  Please complete it before the deadline.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const mailOptions = {
+    from: "rizonrahat199@gmail.com", // Replace with your Gmail email
+    to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+    subject: `New Task Added: ${task.title}`,
+    html: emailBody, // Use the HTML template for the email body
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.log(error);
+    } else {
+      console.log('Email sent: ' + info.response);
+    }
+  });
+
+  res.send(result);
+});
+
+
+
      //delete
          app.delete("/delete-task/team4/:id/:taskNumber", async (req, res) => {
           try {
@@ -358,15 +794,118 @@ async function run() {
         res.send(move5);
        })
       
-      app.put("/add-task/team5/:id", async(req,res)=>{
-      const task = req.body;
-      const id = req.params.id;
-      const result = await teacherCollection5.updateOne(
-       {_id: new ObjectId(id)},
-      {$push: {tasks: task}}
-       )
-      res.send(result);
-       })
+   //email and add task
+   app.put("/add-task/team5/:id", async (req, res) => {
+    const task = req.body;
+    const id = req.params.id;
+    const result = await teacherCollection5.updateOne(
+      { _id: new ObjectId(id) },
+      { $push: { tasks: task } }
+    );
+  
+    // Send email with task data
+    const project = await teacherCollection5.findOne({ _id: new ObjectId(id) });
+    const emailRecipients = project.members.map((member) => member.mail);
+  
+    const emailBody = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.5;
+              background: linear-gradient(135deg, #29c4a9, #006bce);
+              color: #fff;
+              padding: 20px;
+            }
+            .container {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #fff;
+              border-radius: 10px;
+              overflow: hidden;
+              box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            }
+            .header {
+              background: linear-gradient(135deg, #ff5f6d, #ffc371);
+              padding: 20px;
+              text-align: center;
+            }
+            h1 {
+              margin: 0;
+              color: #fff;
+              text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            }
+            .info {
+              background-color: #f1f1f1;
+              padding: 20px;
+            }
+            .info p {
+              margin: 5px 0;
+              color: #333;
+            }
+            .task-details {
+              padding: 20px;
+            }
+            .task-details h2 {
+              color: #e67e22;
+              margin-top: 0;
+            }
+            .task-details p {
+              margin: 5px 0;
+              color: #333;
+              font-weight: bold;
+            }
+            .task-details p span {
+              font-weight: bold;
+              color: #333;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>New Task Added</h1>
+            </div>
+            <div class="info">
+              <p><strong>Teacher:</strong> ${project.teacher}</p>
+              <p><strong>Designation:</strong> ${project.designation}</p>
+              <p><strong>Project Name:</strong> ${project.name}</p>
+              <p><strong>Group No:</strong> ${project.team}</p>
+            </div>
+            <div class="task-details">
+              <h2>Task Details</h2>
+              <p><strong>Title:</strong> <span>${task.title}</span></p>
+              <p><strong>Description:</strong> <span>${task.description}</span></p>
+              <p><strong>Start Date:</strong> <span>${task.start_date}</span></p>
+              <p><strong>Deadline:</strong> <span>${new Date(task.deadline).toLocaleString()}</span></p>
+              <p><strong>Status:</strong> <span>${task.status}</span></p>
+              <p>This task is assigned by <span> ${project.teacher}.</span>  Please complete it before the deadline.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  
+    const mailOptions = {
+      from: "rizonrahat199@gmail.com", // Replace with your Gmail email
+      to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+      subject: `New Task Added: ${task.title}`,
+      html: emailBody, // Use the HTML template for the email body
+    };
+  
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.log(error);
+      } else {
+        console.log('Email sent: ' + info.response);
+      }
+    });
+  
+    res.send(result);
+  });
+
   
      //delete
          app.delete("/delete-task/team5/:id/:taskNumber", async (req, res) => {
@@ -426,15 +965,118 @@ async function run() {
         res.send(move6);
        })
       
-      app.put("/add-task/team6/:id", async(req,res)=>{
+       //email and add task
+    app.put("/add-task/team6/:id", async (req, res) => {
       const task = req.body;
       const id = req.params.id;
       const result = await teacherCollection6.updateOne(
-       {_id: new ObjectId(id)},
-      {$push: {tasks: task}}
-       )
+        { _id: new ObjectId(id) },
+        { $push: { tasks: task } }
+      );
+    
+      // Send email with task data
+      const project = await teacherCollection6.findOne({ _id: new ObjectId(id) });
+      const emailRecipients = project.members.map((member) => member.mail);
+    
+      const emailBody = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.5;
+                background: linear-gradient(135deg, #29c4a9, #006bce);
+                color: #fff;
+                padding: 20px;
+              }
+              .container {
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #fff;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                background: linear-gradient(135deg, #ff5f6d, #ffc371);
+                padding: 20px;
+                text-align: center;
+              }
+              h1 {
+                margin: 0;
+                color: #fff;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+              }
+              .info {
+                background-color: #f1f1f1;
+                padding: 20px;
+              }
+              .info p {
+                margin: 5px 0;
+                color: #333;
+              }
+              .task-details {
+                padding: 20px;
+              }
+              .task-details h2 {
+                color: #e67e22;
+                margin-top: 0;
+              }
+              .task-details p {
+                margin: 5px 0;
+                color: #333;
+                font-weight: bold;
+              }
+              .task-details p span {
+                font-weight: bold;
+                color: #333;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>New Task Added</h1>
+              </div>
+              <div class="info">
+                <p><strong>Teacher:</strong> ${project.teacher}</p>
+                <p><strong>Designation:</strong> ${project.designation}</p>
+                <p><strong>Project Name:</strong> ${project.name}</p>
+                <p><strong>Group No:</strong> ${project.team}</p>
+              </div>
+              <div class="task-details">
+                <h2>Task Details</h2>
+                <p><strong>Title:</strong> <span>${task.title}</span></p>
+                <p><strong>Description:</strong> <span>${task.description}</span></p>
+                <p><strong>Start Date:</strong> <span>${task.start_date}</span></p>
+                <p><strong>Deadline:</strong> <span>${new Date(task.deadline).toLocaleString()}</span></p>
+                <p><strong>Status:</strong> <span>${task.status}</span></p>
+                <p>This task is assigned by <span> ${project.teacher}.</span>  Please complete it before the deadline.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+    
+      const mailOptions = {
+        from: "rizonrahat199@gmail.com", // Replace with your Gmail email
+        to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+        subject: `New Task Added: ${task.title}`,
+        html: emailBody, // Use the HTML template for the email body
+      };
+    
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log('Email sent: ' + info.response);
+        }
+      });
+    
       res.send(result);
-       })
+    });
+
   
      //delete
          app.delete("/delete-task/team6/:id/:taskNumber", async (req, res) => {
@@ -493,15 +1135,120 @@ async function run() {
         res.send(move7);
        })
       
-      app.put("/add-task/team7/:id", async(req,res)=>{
+    
+
+        //email and add task
+    app.put("/add-task/team7/:id", async (req, res) => {
       const task = req.body;
       const id = req.params.id;
       const result = await teacherCollection7.updateOne(
-       {_id: new ObjectId(id)},
-      {$push: {tasks: task}}
-       )
-        res.send(result);
-       })
+        { _id: new ObjectId(id) },
+        { $push: { tasks: task } }
+      );
+    
+      // Send email with task data
+      const project = await teacherCollection7.findOne({ _id: new ObjectId(id) });
+      const emailRecipients = project.members.map((member) => member.mail);
+    
+      const emailBody = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.5;
+                background: linear-gradient(135deg, #29c4a9, #006bce);
+                color: #fff;
+                padding: 20px;
+              }
+              .container {
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #fff;
+                border-radius: 10px;
+                overflow: hidden;
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                background: linear-gradient(135deg, #ff5f6d, #ffc371);
+                padding: 20px;
+                text-align: center;
+              }
+              h1 {
+                margin: 0;
+                color: #fff;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+              }
+              .info {
+                background-color: #f1f1f1;
+                padding: 20px;
+              }
+              .info p {
+                margin: 5px 0;
+                color: #333;
+              }
+              .task-details {
+                padding: 20px;
+              }
+              .task-details h2 {
+                color: #e67e22;
+                margin-top: 0;
+              }
+              .task-details p {
+                margin: 5px 0;
+                color: #333;
+                font-weight: bold;
+              }
+              .task-details p span {
+                font-weight: bold;
+                color: #333;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>New Task Added</h1>
+              </div>
+              <div class="info">
+                <p><strong>Teacher:</strong> ${project.teacher}</p>
+                <p><strong>Designation:</strong> ${project.designation}</p>
+                <p><strong>Project Name:</strong> ${project.name}</p>
+                <p><strong>Group No:</strong> ${project.team}</p>
+              </div>
+              <div class="task-details">
+                <h2>Task Details</h2>
+                <p><strong>Title:</strong> <span>${task.title}</span></p>
+                <p><strong>Description:</strong> <span>${task.description}</span></p>
+                <p><strong>Start Date:</strong> <span>${task.start_date}</span></p>
+                <p><strong>Deadline:</strong> <span>${new Date(task.deadline).toLocaleString()}</span></p>
+                <p><strong>Status:</strong> <span>${task.status}</span></p>
+                <p>This task is assigned by <span> ${project.teacher}.</span>  Please complete it before the deadline.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+    
+      const mailOptions = {
+        from: "rizonrahat199@gmail.com", // Replace with your Gmail email
+        to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+        subject: `New Task Added: ${task.title}`,
+        html: emailBody, // Use the HTML template for the email body
+      };
+    
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log(error);
+        } else {
+          console.log('Email sent: ' + info.response);
+        }
+      });
+    
+      res.send(result);
+    });
+
   
      //delete
          app.delete("/delete-task/team7/:id/:taskNumber", async (req, res) => {
