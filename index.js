@@ -208,7 +208,7 @@ res.status(500).json({ message: 'Error fetching data' });
     
       const mailOptions = {
         from: "rizonrahat199@gmail.com", // Replace with your Gmail email
-        to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+        to:"it19031@mbstu.ac.bd", // Use a comma-separated string of email addresses
         subject: `New Task Added: ${task.title}`,
         html: emailBody, // Use the HTML template for the email body
       };
@@ -377,7 +377,7 @@ res.status(500).json({ message: 'Error fetching data' });
     
       const mailOptions = {
         from: "rizonrahat199@gmail.com", // Replace with your Gmail email
-        to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+        to:"it19031@mbstu.ac.bd", // Use a comma-separated string of email addresses
         subject: `New Task Added: ${task.title}`,
         html: emailBody, // Use the HTML template for the email body
       };
@@ -548,7 +548,7 @@ res.status(500).json({ message: 'Error fetching data' });
 
   const mailOptions = {
     from: "rizonrahat199@gmail.com", // Replace with your Gmail email
-    to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+    to:"it19031@mbstu.ac.bd", // Use a comma-separated string of email addresses
     subject: `New Task Added: ${task.title}`,
     html: emailBody, // Use the HTML template for the email body
   };
@@ -718,7 +718,7 @@ res.status(500).json({ message: 'Error fetching data' });
 
   const mailOptions = {
     from: "rizonrahat199@gmail.com", // Replace with your Gmail email
-    to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+    to: "it19031@mbstu.ac.bd", // Use a comma-separated string of email addresses
     subject: `New Task Added: ${task.title}`,
     html: emailBody, // Use the HTML template for the email body
   };
@@ -890,7 +890,7 @@ res.status(500).json({ message: 'Error fetching data' });
   
     const mailOptions = {
       from: "rizonrahat199@gmail.com", // Replace with your Gmail email
-      to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+      to:"it19031@mbstu.ac.bd", // Use a comma-separated string of email addresses
       subject: `New Task Added: ${task.title}`,
       html: emailBody, // Use the HTML template for the email body
     };
@@ -1061,7 +1061,7 @@ res.status(500).json({ message: 'Error fetching data' });
     
       const mailOptions = {
         from: "rizonrahat199@gmail.com", // Replace with your Gmail email
-        to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+        to: "it19031@mbstu.ac.bd", // Use a comma-separated string of email addresses
         subject: `New Task Added: ${task.title}`,
         html: emailBody, // Use the HTML template for the email body
       };
@@ -1233,7 +1233,7 @@ res.status(500).json({ message: 'Error fetching data' });
     
       const mailOptions = {
         from: "rizonrahat199@gmail.com", // Replace with your Gmail email
-        to: emailRecipients.join(', '), // Use a comma-separated string of email addresses
+        to: "it19031@mbstu.ac.bd", // Use a comma-separated string of email addresses
         subject: `New Task Added: ${task.title}`,
         html: emailBody, // Use the HTML template for the email body
       };
