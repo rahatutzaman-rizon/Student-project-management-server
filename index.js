@@ -28,7 +28,7 @@ const transporter = nodemailer.createTransport({
 
 //gpeYJ3jTyAALnHAr
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const uri = "mongodb://rizonrahat199:gpeYJ3jTyAALnHAr@ac-jif2aos-shard-00-00.u9sh80h.mongodb.net:27017,ac-jif2aos-shard-00-01.u9sh80h.mongodb.net:27017,ac-jif2aos-shard-00-02.u9sh80h.mongodb.net:27017/?ssl=true&replicaSet=atlas-rzyffr-shard-0&authSource=admin&retryWrites=true&w=majority";
+const uri = ""
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
