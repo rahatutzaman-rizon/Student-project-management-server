@@ -475,7 +475,7 @@ res.status(500).json({ message: 'Error fetching data' });
             line-height: 1.5;
             background: linear-gradient(135deg, #29c4a9, #006bce);
             color: #fff;
-            padding: 20px;
+            padding: 22px;
           }
           .container {
             max-width: 600px;
